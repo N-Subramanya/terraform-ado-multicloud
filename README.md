@@ -138,10 +138,6 @@ terraform -chdir=modules/azure init -backend=false && terraform -chdir=modules/a
 - [ ] Infracost cost estimate on PRs
 - [ ] Scheduled drift detection
 
-## 🙏 Acknowledgements
-
-Inspired by the Azure DevOps + Terraform labs in [saikiranpi/Mastering-DevSecOps](https://github.com/saikiranpi/Mastering-DevSecOps), extended to multi-cloud with keyless authentication and security gates.
-
 ## 📄 License
 
 [MIT](LICENSE) © Subramanya N
