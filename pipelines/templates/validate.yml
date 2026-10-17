@@ -1,0 +1,10 @@
+# pipelines/templates/validate.yml — validate stage template (to be implemented)
+parameters:
+  - name: cloud
+    type: string
+  - name: environment
+    type: string
+
+steps:
+  - script: echo "validate ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
+    displayName: "validate (placeholder)"

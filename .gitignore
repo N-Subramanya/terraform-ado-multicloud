@@ -1,0 +1,29 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+
+# Secrets: never commit
+*.auto.tfvars
+*.secret.tfvars
+*.pem
+*.key
+.env
+
+# Packer
+packer_cache/
+manifest.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

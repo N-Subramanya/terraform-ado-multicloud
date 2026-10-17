@@ -1,0 +1,10 @@
+# pipelines/templates/apply.yml — apply stage template (to be implemented)
+parameters:
+  - name: cloud
+    type: string
+  - name: environment
+    type: string
+
+steps:
+  - script: echo "apply ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
+    displayName: "apply (placeholder)"

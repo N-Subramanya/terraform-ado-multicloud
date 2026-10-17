@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="55%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7B42BC"/>
+      <stop offset="50%" stop-color="#0078D7"/>
+      <stop offset="100%" stop-color="#FF9900"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.05"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="300" fill="url(#bg)"/>
+  <rect width="1200" height="300" fill="url(#grid)"/>
+  <circle cx="1060" cy="60" r="140" fill="#7B42BC" opacity="0.18"/>
+  <circle cx="980" cy="260" r="110" fill="#0078D7" opacity="0.18"/>
+
+  <text x="70" y="118" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="#ffffff">Multi-Cloud IaC</text>
+  <text x="70" y="172" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="300" fill="#c7d2fe">with Terraform &amp; Azure DevOps</text>
+  <rect x="70" y="196" width="380" height="5" rx="2.5" fill="url(#accent)"/>
+  <text x="70" y="244" font-family="Consolas, Menlo, monospace" font-size="20" fill="#a5b4fc">validate → scan → plan → approve → apply</text>
+
+  <!-- cloud chips -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="600">
+    <rect x="800" y="95" width="150" height="44" rx="22" fill="#7B42BC"/>
+    <text x="875" y="124" text-anchor="middle" fill="#fff">Terraform</text>
+    <rect x="965" y="95" width="160" height="44" rx="22" fill="#0078D7"/>
+    <text x="1045" y="124" text-anchor="middle" fill="#fff">Azure DevOps</text>
+    <rect x="800" y="155" width="150" height="44" rx="22" fill="#0089D6"/>
+    <text x="875" y="184" text-anchor="middle" fill="#fff">Azure</text>
+    <rect x="965" y="155" width="160" height="44" rx="22" fill="#FF9900"/>
+    <text x="1045" y="184" text-anchor="middle" fill="#111">AWS</text>
+  </g>
+</svg>

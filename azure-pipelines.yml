@@ -1,0 +1,60 @@
+# Multi-cloud Terraform pipeline: Validate → Scan → Plan → Approval → Apply/Destroy
+# Stage logic lives in pipelines/templates/ (to be implemented).
+trigger:
+  branches:
+    include: [main]
+
+parameters:
+  - name: cloud
+    displayName: Target cloud
+    type: string
+    default: azure
+    values: [azure, aws, both]
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values: [dev, prod]
+  - name: action
+    displayName: Terraform action
+    type: string
+    default: plan
+    values: [plan, apply, destroy]
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: validate
+        steps:
+          - template: pipelines/templates/validate.yml
+            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+  - stage: Scan
+    dependsOn: Validate
+    jobs:
+      - job: scan
+        steps:
+          - template: pipelines/templates/scan.yml
+            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+  - stage: Plan
+    dependsOn: Scan
+    jobs:
+      - job: plan
+        steps:
+          - template: pipelines/templates/plan.yml
+            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+  - ${{ if ne(parameters.action, 'plan') }}:
+    - stage: Apply
+      dependsOn: Plan
+      jobs:
+        - deployment: apply
+          environment: ${{ parameters.environment }}   # approval check configured on the ADO Environment
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - checkout: self
+                  - template: pipelines/templates/apply.yml
+                    parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }

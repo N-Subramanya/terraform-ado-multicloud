@@ -1,0 +1,10 @@
+# pipelines/templates/scan.yml — scan stage template (to be implemented)
+parameters:
+  - name: cloud
+    type: string
+  - name: environment
+    type: string
+
+steps:
+  - script: echo "scan ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
+    displayName: "scan (placeholder)"
