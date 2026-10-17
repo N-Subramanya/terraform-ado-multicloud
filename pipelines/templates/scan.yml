@@ -1,10 +1,28 @@
-# pipelines/templates/scan.yml — scan stage template (to be implemented)
+# Step template: Checkov policy-as-code scan, results published to the ADO "Tests" tab.
+# Accepted risks are documented inline as #checkov:skip comments next to the resource.
 parameters:
-  - name: cloud
-    type: string
-  - name: environment
+  - name: checkovVersion
     type: string
 
 steps:
-  - script: echo "scan ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
-    displayName: "scan (placeholder)"
+  - task: UsePythonVersion@0
+    displayName: Use Python 3.12
+    inputs:
+      versionSpec: "3.12"
+
+  - script: pip install --quiet "checkov==${{ parameters.checkovVersion }}"
+    displayName: Install Checkov ${{ parameters.checkovVersion }}
+
+  - script: >-
+      checkov -d . --framework terraform --quiet
+      --output cli --output junitxml
+      --output-file-path console,$(Common.TestResultsDirectory)
+    displayName: Checkov security scan
+
+  - task: PublishTestResults@2
+    displayName: Publish Checkov results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: $(Common.TestResultsDirectory)/results_junitxml.xml
+      testRunTitle: Checkov · Terraform

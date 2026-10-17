@@ -5,17 +5,79 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  terraform-lint:
+  terraform:
+    name: fmt · validate · tflint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
-      - name: Terraform validate (modules)
+        with:
+          terraform_version: 1.16.6
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform validate (all stacks)
         run: |
-          for d in modules/azure modules/aws; do
-            terraform -chdir=$d init -backend=false -input=false
-            terraform -chdir=$d validate
+          for dir in envs/*/*/; do
+            echo "==> $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
           done
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.64.0
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+          tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl"
+
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Checkov
+        run: pip install --quiet "checkov==3.3.29"
+
+      - name: Checkov scan
+        run: checkov -d . --framework terraform --quiet --compact
+
+  packer:
+    name: packer validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-packer@v3
+        with:
+          version: 1.16.1
+
+      - name: packer fmt + validate
+        working-directory: packer
+        run: |
+          packer init .
+          packer fmt -check .
+          packer validate .
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck scripts
+        run: shellcheck scripts/*.sh

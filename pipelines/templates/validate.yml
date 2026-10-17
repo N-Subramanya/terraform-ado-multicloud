@@ -1,10 +1,20 @@
-# pipelines/templates/validate.yml — validate stage template (to be implemented)
+# Step template: formatting + validation of every stack (no cloud credentials needed).
 parameters:
-  - name: cloud
-    type: string
-  - name: environment
+  - name: terraformVersion
     type: string
 
 steps:
-  - script: echo "validate ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
-    displayName: "validate (placeholder)"
+  - script: bash scripts/install-terraform.sh ${{ parameters.terraformVersion }}
+    displayName: Install Terraform ${{ parameters.terraformVersion }}
+
+  - script: terraform fmt -check -recursive -diff
+    displayName: terraform fmt -check
+
+  - script: |
+      set -euo pipefail
+      for dir in envs/*/*/; do
+        echo "==> $dir"
+        terraform -chdir="$dir" init -backend=false -input=false
+        terraform -chdir="$dir" validate
+      done
+    displayName: terraform validate (all stacks)

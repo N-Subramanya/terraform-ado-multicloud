@@ -1,10 +1,41 @@
-# pipelines/templates/apply.yml — apply stage template (to be implemented)
+# Job template: apply the exact plan produced in the Plan stage.
+# Runs as a deployment job on the ADO Environment, so approvals/checks configured there gate it.
 parameters:
   - name: cloud
     type: string
   - name: environment
     type: string
+  - name: terraformVersion
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: awsServiceConnection
+    type: string
 
-steps:
-  - script: echo "apply ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
-    displayName: "apply (placeholder)"
+jobs:
+  - deployment: apply_${{ parameters.cloud }}
+    displayName: Apply · ${{ parameters.cloud }}/${{ parameters.environment }}
+    environment: ${{ parameters.environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - checkout: self
+
+            - download: current
+              artifact: tfplan_${{ parameters.cloud }}
+              displayName: Download reviewed plan
+
+            - script: cp "$(Pipeline.Workspace)/tfplan_${{ parameters.cloud }}/tfplan" "envs/${{ parameters.environment }}/${{ parameters.cloud }}/tfplan"
+              displayName: Restore plan file
+
+            - script: bash scripts/install-terraform.sh ${{ parameters.terraformVersion }}
+              displayName: Install Terraform ${{ parameters.terraformVersion }}
+
+            - template: terraform.yml
+              parameters:
+                cloud: ${{ parameters.cloud }}
+                environment: ${{ parameters.environment }}
+                command: apply
+                azureServiceConnection: ${{ parameters.azureServiceConnection }}
+                awsServiceConnection: ${{ parameters.awsServiceConnection }}

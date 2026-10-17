@@ -1,0 +1,14 @@
+#!/bin/bash
+# Used only when use_golden_ami = false (the golden AMI already has nginx baked in).
+set -euo pipefail
+dnf install -y nginx
+cat > /usr/share/nginx/html/index.html <<HTML
+<!doctype html>
+<html><head><title>${project} · ${environment}</title></head>
+<body style="font-family:sans-serif;text-align:center;padding-top:15vh">
+  <h1>☁️ ${project} (${environment})</h1>
+  <p>AWS web tier deployed by Terraform through an Azure DevOps pipeline.</p>
+  <p>Instance: $(cat /sys/devices/virtual/dmi/id/board_asset_tag 2>/dev/null || hostname)</p>
+</body></html>
+HTML
+systemctl enable --now nginx

@@ -1,10 +1,49 @@
-# pipelines/templates/plan.yml — plan stage template (to be implemented)
+# Job template: terraform plan (or plan -destroy) for one cloud, saved as a pipeline artifact.
 parameters:
   - name: cloud
     type: string
   - name: environment
     type: string
+  - name: action
+    type: string
+  - name: terraformVersion
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: awsServiceConnection
+    type: string
 
-steps:
-  - script: echo "plan ${{ parameters.cloud }} / ${{ parameters.environment }} — TODO"
-    displayName: "plan (placeholder)"
+jobs:
+  - job: plan_${{ parameters.cloud }}
+    displayName: Plan · ${{ parameters.cloud }}/${{ parameters.environment }}
+    steps:
+      - script: bash scripts/install-terraform.sh ${{ parameters.terraformVersion }}
+        displayName: Install Terraform ${{ parameters.terraformVersion }}
+
+      - template: terraform.yml
+        parameters:
+          cloud: ${{ parameters.cloud }}
+          environment: ${{ parameters.environment }}
+          command: ${{ iif(eq(parameters.action, 'destroy'), 'plan-destroy', 'plan') }}
+          azureServiceConnection: ${{ parameters.azureServiceConnection }}
+          awsServiceConnection: ${{ parameters.awsServiceConnection }}
+
+      - script: |
+          set -euo pipefail
+          dir="envs/${{ parameters.environment }}/${{ parameters.cloud }}"
+          mkdir -p "$(Build.ArtifactStagingDirectory)/plan"
+          cp "$dir/tfplan" "$dir/tfplan.txt" "$(Build.ArtifactStagingDirectory)/plan/"
+          summary="$(Build.ArtifactStagingDirectory)/plan/summary.md"
+          {
+            echo "## Terraform plan · ${{ parameters.cloud }}/${{ parameters.environment }} (${{ parameters.action }})"
+            echo
+            echo '```'
+            grep -E '^(Plan:|No changes|Changes to Outputs)' "$dir/tfplan.txt" || true
+            echo '```'
+          } > "$summary"
+          echo "##vso[task.uploadsummary]$summary"
+        displayName: Stage plan + summary
+
+      - publish: $(Build.ArtifactStagingDirectory)/plan
+        artifact: tfplan_${{ parameters.cloud }}
+        displayName: Publish plan artifact

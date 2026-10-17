@@ -1,6 +1,20 @@
-# Multi-cloud Terraform pipeline: Validate → Scan → Plan → Approval → Apply/Destroy
-# Stage logic lives in pipelines/templates/ (to be implemented).
+# Multi-cloud Terraform pipeline: Validate → Scan → Plan → (Approval) → Apply/Destroy
+#
+# Run parameters are chosen at queue time, so changes go through git and no YES/NO values are committed to flip behaviour.
+# Pushes/PRs to main run Validate → Scan → Plan only (action defaults to "plan").
+#
+# Prerequisites (see docs/ado-setup.md):
+#   - Service connections : sc-azure-wif (Azure RM, workload identity federation), sc-aws (AWS Toolkit, OIDC role)
+#   - Variable group      : vg-terraform-common (state backend names, AWS_REGION)
+#   - Environments        : dev, prod (add an Approvals check on prod)
+
 trigger:
+  branches:
+    include: [main]
+  paths:
+    exclude: ["*.md", docs/*]
+
+pr:
   branches:
     include: [main]
 
@@ -21,40 +35,84 @@ parameters:
     default: plan
     values: [plan, apply, destroy]
 
+variables:
+  - group: vg-terraform-common
+  - name: azureServiceConnection
+    value: sc-azure-wif
+  - name: awsServiceConnection
+    value: sc-aws
+  - name: terraformVersion
+    value: 1.16.6
+  - name: checkovVersion
+    value: 3.3.29
+
 pool:
   vmImage: ubuntu-latest
 
 stages:
   - stage: Validate
+    displayName: ✅ Validate
     jobs:
       - job: validate
+        displayName: fmt + validate
         steps:
           - template: pipelines/templates/validate.yml
-            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+            parameters:
+              terraformVersion: ${{ variables.terraformVersion }}
+
   - stage: Scan
+    displayName: 🛡️ Security scan
     dependsOn: Validate
     jobs:
-      - job: scan
+      - job: checkov
+        displayName: Checkov
         steps:
           - template: pipelines/templates/scan.yml
-            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+            parameters:
+              checkovVersion: ${{ variables.checkovVersion }}
+
   - stage: Plan
+    displayName: 📋 Plan · ${{ parameters.environment }}
     dependsOn: Scan
     jobs:
-      - job: plan
-        steps:
+      - ${{ if or(eq(parameters.cloud, 'azure'), eq(parameters.cloud, 'both')) }}:
           - template: pipelines/templates/plan.yml
-            parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+            parameters:
+              cloud: azure
+              environment: ${{ parameters.environment }}
+              action: ${{ parameters.action }}
+              terraformVersion: ${{ variables.terraformVersion }}
+              azureServiceConnection: ${{ variables.azureServiceConnection }}
+              awsServiceConnection: ${{ variables.awsServiceConnection }}
+      - ${{ if or(eq(parameters.cloud, 'aws'), eq(parameters.cloud, 'both')) }}:
+          - template: pipelines/templates/plan.yml
+            parameters:
+              cloud: aws
+              environment: ${{ parameters.environment }}
+              action: ${{ parameters.action }}
+              terraformVersion: ${{ variables.terraformVersion }}
+              azureServiceConnection: ${{ variables.azureServiceConnection }}
+              awsServiceConnection: ${{ variables.awsServiceConnection }}
+
   - ${{ if ne(parameters.action, 'plan') }}:
-    - stage: Apply
-      dependsOn: Plan
-      jobs:
-        - deployment: apply
-          environment: ${{ parameters.environment }}   # approval check configured on the ADO Environment
-          strategy:
-            runOnce:
-              deploy:
-                steps:
-                  - checkout: self
-                  - template: pipelines/templates/apply.yml
-                    parameters: { cloud: ${{ parameters.cloud }}, environment: ${{ parameters.environment }} }
+      - stage: Apply
+        displayName: 🚀 ${{ parameters.action }} · ${{ parameters.environment }}
+        dependsOn: Plan
+        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+        jobs:
+          - ${{ if or(eq(parameters.cloud, 'azure'), eq(parameters.cloud, 'both')) }}:
+              - template: pipelines/templates/apply.yml
+                parameters:
+                  cloud: azure
+                  environment: ${{ parameters.environment }}
+                  terraformVersion: ${{ variables.terraformVersion }}
+                  azureServiceConnection: ${{ variables.azureServiceConnection }}
+                  awsServiceConnection: ${{ variables.awsServiceConnection }}
+          - ${{ if or(eq(parameters.cloud, 'aws'), eq(parameters.cloud, 'both')) }}:
+              - template: pipelines/templates/apply.yml
+                parameters:
+                  cloud: aws
+                  environment: ${{ parameters.environment }}
+                  terraformVersion: ${{ variables.terraformVersion }}
+                  azureServiceConnection: ${{ variables.azureServiceConnection }}
+                  awsServiceConnection: ${{ variables.awsServiceConnection }}

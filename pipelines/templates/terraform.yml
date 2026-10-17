@@ -1,0 +1,44 @@
+# Step template: authenticate to the target cloud, then run scripts/tf.sh.
+#   Azure: workload identity federation service connection → OIDC token for the azurerm provider + backend
+#   AWS:   AWS Toolkit service connection (OIDC role recommended) → temporary credentials in the environment
+parameters:
+  - name: cloud
+    type: string
+  - name: environment
+    type: string
+  - name: command
+    type: string
+  - name: azureServiceConnection
+    type: string
+  - name: awsServiceConnection
+    type: string
+
+steps:
+  - ${{ if eq(parameters.cloud, 'azure') }}:
+      - task: AzureCLI@2
+        displayName: terraform ${{ parameters.command }} · azure/${{ parameters.environment }}
+        inputs:
+          azureSubscription: ${{ parameters.azureServiceConnection }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          addSpnToEnvironment: true
+          inlineScript: |
+            set -euo pipefail
+            export ARM_CLIENT_ID="$servicePrincipalId"
+            export ARM_TENANT_ID="$tenantId"
+            export ARM_OIDC_TOKEN="$idToken"
+            export ARM_USE_OIDC=true
+            export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+            bash scripts/tf.sh azure ${{ parameters.environment }} ${{ parameters.command }}
+
+  - ${{ if eq(parameters.cloud, 'aws') }}:
+      - task: AWSShellScript@1
+        displayName: terraform ${{ parameters.command }} · aws/${{ parameters.environment }}
+        inputs:
+          awsCredentials: ${{ parameters.awsServiceConnection }}
+          regionName: $(AWS_REGION)
+          scriptType: filePath
+          filePath: scripts/tf.sh
+          arguments: aws ${{ parameters.environment }} ${{ parameters.command }}
+          disableAutoCwd: true
+          workingDirectory: $(System.DefaultWorkingDirectory)

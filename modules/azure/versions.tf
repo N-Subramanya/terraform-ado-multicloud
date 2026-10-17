@@ -1,1 +1,10 @@
-# modules/azure/versions.tf — to be implemented
+terraform {
+  required_version = ">= 1.10"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 5.0"
+    }
+  }
+}

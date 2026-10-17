@@ -27,3 +27,7 @@ manifest.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Plan outputs and child-module lock files (lock files are committed for root stacks in envs/ only)
+tfplan.txt
+modules/**/.terraform.lock.hcl
